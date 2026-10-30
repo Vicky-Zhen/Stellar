@@ -32,6 +32,11 @@
     <button id="asteroidOpen" class="primary"><span class="en" lang="en">☄ Asteroid Analyzer</span><span class="zh" lang="zh-CN">☄ 小行星分析</span><span class="es" lang="es">☄ Analizador de asteroides</span></button>
     <button id="lineup"><span class="en" lang="en">Compare Sizes</span><span class="zh" lang="zh-CN">大小对比</span><span class="es" lang="es">Comparar tamaños</span></button>
     <button id="pause"><span class="en" lang="en">Pause Orbits</span><span class="zh" lang="zh-CN">暂停公转</span><span class="es" lang="es">Pausar órbitas</span></button>
+    <button id="resourcesOpen" class="primary" type="button">
+      <span class="en">✦ Astronomy Resources</span>
+      <span class="zh">✦ 天文学资源</span>
+      <span class="es">✦ Recursos de astronomía</span>
+    </button>
     <button id="cam" class="primary"><span class="en" lang="en">Enable Gestures</span><span class="zh" lang="zh-CN">启用手势</span><span class="es" lang="es">Activar gestos</span></button>
     <button id="talk" class="primary"><span class="en" lang="en">🎙 Talk</span><span class="zh" lang="zh-CN">🎙 语音提问</span><span class="es" lang="es">🎙 Hablar</span></button>
   </div>
@@ -168,6 +173,137 @@
   </div>
 </section>
 
+<!-- Astronomy Resources Panel -->
+<section id="resourcesPanel"
+         class="resources-panel hidden"
+         aria-label="Astronomy learning resources">
+
+  <div class="resources-header">
+    <div>
+      <div class="eyebrow">STELLAR · LEARNING HUB</div>
+      <h2>Astronomy Resources</h2>
+      <p>
+        Explore reliable websites, free textbooks,
+        interactive simulations, and scientific data
+        to deepen your understanding of the universe.
+      </p>
+    </div>
+
+    <button id="resourcesClose"
+            type="button"
+            aria-label="Close resources">✕</button>
+  </div>
+
+  <!-- Category Filters -->
+  <div class="resource-filters">
+    <button class="active" data-category="all">All</button>
+    <button data-category="learn">Learn Astronomy</button>
+    <button data-category="explore">Explore</button>
+    <button data-category="data">Scientific Data</button>
+    <button data-category="news">News</button>
+  </div>
+
+  <!-- Resource Cards -->
+  <div class="resource-grid" id="resourceGrid">
+
+    <a class="resource-card" data-category="learn"
+       href="https://openstax.org/books/astronomy-2e/pages/1-introduction"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">FREE TEXTBOOK</span>
+      <h3>OpenStax Astronomy 2e</h3>
+      <p>
+        A free college-level astronomy textbook covering
+        planets, stars, galaxies, and cosmology.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="learn"
+       href="https://science.nasa.gov/learn/catalog/"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">LEARNING MATERIALS</span>
+      <h3>NASA Learning Resources</h3>
+      <p>
+        Educational activities, illustrations,
+        astronomy lessons, and science resources.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="explore"
+       href="https://stellarium-web.org/"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">INTERACTIVE SKY MAP</span>
+      <h3>Stellarium Web</h3>
+      <p>
+        Explore the night sky, identify constellations,
+        and locate planets and stars.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="explore"
+       href="https://eyes.nasa.gov/"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">3D SIMULATION</span>
+      <h3>NASA Eyes</h3>
+      <p>
+        Explore the solar system and NASA spacecraft
+        through interactive 3D visualizations.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="data"
+       href="https://exoplanetarchive.ipac.caltech.edu/"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">ASTRONOMICAL DATABASE</span>
+      <h3>NASA Exoplanet Archive</h3>
+      <p>
+        Access scientific data about planets outside
+        our solar system and their host stars.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="data"
+       href="https://ssd.jpl.nasa.gov/horizons/"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">ORBITAL DATA</span>
+      <h3>JPL Horizons</h3>
+      <p>
+        Calculate positions and trajectories of planets,
+        moons, asteroids, and spacecraft.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="news"
+       href="https://science.nasa.gov/universe/"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">RESEARCH & DISCOVERIES</span>
+      <h3>NASA Universe</h3>
+      <p>
+        Discover research on black holes, galaxies,
+        stars, and the evolution of the universe.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+    <a class="resource-card" data-category="news"
+       href="https://www.esa.int/Science_Exploration/Space_Science"
+       target="_blank" rel="noopener noreferrer">
+      <span class="resource-type">SPACE SCIENCE</span>
+      <h3>ESA Space Science</h3>
+      <p>
+        Follow European space missions and scientific
+        discoveries across the solar system and beyond.
+      </p>
+      <span class="resource-link">Explore resource ↗</span>
+    </a>
+
+  </div>
+</section>
 <div class="status" id="status" role="status"></div>
 <div id="error"></div>
 
@@ -196,5 +332,6 @@
   setTimeout(() => { if (!window.SolarAtlas) { const el = document.querySelector('#error'); el.style.display = 'block'; el.innerHTML = window.bi('The 3D engine has not loaded. Open the page through a local server (npm start or Live Server) and check access to cdn.jsdelivr.net.', '3D 引擎尚未加载。请通过本地服务器（npm start 或 Live Server）打开，并检查能否访问 cdn.jsdelivr.net。', 'El motor 3D no se ha cargado. Abre la página con un servidor local (npm start o Live Server) y comprueba el acceso a cdn.jsdelivr.net.'); } }, 20000);
   addEventListener('error', e => { if (!e.message || e.message.includes('Script error')) return; console.error(e.message); const el = document.querySelector('#error'); if (el && !window.SolarAtlas) { el.style.display = 'block'; el.innerHTML = window.bi('A problem occurred while starting the page: ' + e.message, '页面启动时出现问题：' + e.message, 'Hubo un problema al iniciar la página: ' + e.message); } });
 </script>
+<script src="resources.js" defer></script>
 </body>
 </html>

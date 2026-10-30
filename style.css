@@ -202,3 +202,177 @@ body.chat-open.mode-focus .chatpanel { right: 390px; }
   .habit-compare { grid-template-columns: 1fr; }
 }
 
+/* Astronomy Resources */
+
+.resources-panel {
+    position: fixed;
+    z-index: 12;
+
+    top: 90px;
+    bottom: 75px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: min(1050px, calc(100vw - 40px));
+    padding: 28px;
+
+    overflow-y: auto;
+
+    background: linear-gradient(
+        145deg,
+        #101e2af5,
+        #07101df8
+    );
+
+    border: 1px solid #8bb4d133;
+    border-radius: 18px;
+
+    backdrop-filter: blur(20px);
+    box-shadow: 0 24px 80px #0009;
+
+    scrollbar-width: thin;
+}
+
+/* Header */
+
+.resources-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.resources-header h2 {
+    font-size: 30px;
+    font-weight: 400;
+    margin: 10px 0;
+}
+
+.resources-header p {
+    color: #91a5b8;
+    font-size: 12px;
+    line-height: 1.8;
+    max-width: 620px;
+}
+
+#resourcesClose {
+    font-size: 18px;
+    padding: 6px 12px;
+}
+
+/* Category buttons */
+
+.resource-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 25px 0;
+}
+
+.resource-filters button {
+    font-size: 11px;
+    padding: 9px 14px;
+    border-radius: 20px;
+}
+
+.resource-filters button.active {
+    background: #8bd6ff20;
+    border-color: #8bd6ff;
+    color: #8bd6ff;
+}
+
+/* Resource grid */
+
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+/* Resource cards */
+
+.resource-card {
+    display: flex;
+    flex-direction: column;
+
+    min-height: 205px;
+    padding: 22px;
+
+    border: 1px solid #ffffff20;
+    border-radius: 14px;
+
+    background: linear-gradient(
+        145deg,
+        #ffffff0b,
+        #ffffff04
+    );
+
+    text-decoration: none;
+    color: #edf3fa;
+
+    transition:
+        transform 0.2s,
+        border-color 0.2s,
+        background 0.2s;
+}
+
+.resource-card:hover {
+    transform: translateY(-4px);
+    border-color: #8bd6ff88;
+    background: #8bd6ff12;
+}
+
+.resource-type {
+    color: #8bd6ff;
+    font: 10px monospace;
+    letter-spacing: 0.12em;
+}
+
+.resource-card h3 {
+    font-size: 17px;
+    font-weight: 500;
+    margin: 16px 0 8px;
+}
+
+.resource-card p {
+    color: #91a5b8;
+    font-size: 12px;
+    line-height: 1.7;
+    margin: 0 0 20px;
+}
+
+.resource-link {
+    margin-top: auto;
+    color: #8bd6ff;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Mobile responsiveness */
+
+@media (max-width: 900px) {
+    .resource-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .resources-panel {
+        top: 75px;
+        bottom: 15px;
+        width: calc(100vw - 20px);
+        padding: 18px;
+    }
+
+    .resources-header h2 {
+        font-size: 23px;
+    }
+
+    .resource-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .resource-card {
+        min-height: 170px;
+    }
+}
