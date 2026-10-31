@@ -222,3 +222,30 @@ body.chat-open.mode-focus .chatpanel { right: 390px; }
 .resource-link { margin-top:auto; color:#8bd6ff; font-size:11px; font-weight:500; }
 @media (max-width:900px) { .resource-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:600px) { .resources-panel { top:75px; bottom:15px; width:calc(100vw - 20px); padding:18px; } .resources-header h2 { font-size:23px; } .resource-grid { grid-template-columns:1fr; } .resource-card { min-height:170px; } }
+
+/* Team additions: Motion Trails and Music */
+
+.flight-panel{display:none;position:fixed;right:30px;top:155px;width:260px;padding:20px;background:linear-gradient(140deg,#102b3cda,#040c18ed);border:1px solid #73dfff40;border-radius:16px;z-index:3;backdrop-filter:blur(18px)}
+.flight-time{font:30px monospace;color:#b6ecff;margin:16px 0;text-shadow:0 0 20px #53caff66}.flight-panel label{font-size:11px;color:#a4bacb}.flight-panel label b{float:right}.flight-panel input{margin:14px 0}.flight-panel p{font-size:10px;line-height:1.7;color:#8fa9bd}.flight-actions{display:flex;gap:6px}.flight-actions button{font-size:10px;padding:8px}.flight-label{display:none;position:fixed;top:0;left:0;font:10px monospace;pointer-events:none;z-index:1;text-shadow:0 0 10px currentColor}.mode-trajectory .intro{max-width:320px}.mode-trajectory .hint{display:none}
+@media(max-width:800px){.flight-panel{top:auto;right:12px;bottom:115px;width:210px;padding:12px}.flight-panel p:last-child{max-height:62px;overflow:auto}.mode-trajectory .intro{top:140px;max-width:200px}.mode-trajectory .intro p{display:none}.flight-time{font-size:22px;margin:8px 0}}
+
+.mode-trajectory .intro{left:42px;top:138px;max-width:290px}.mode-trajectory .intro .eyebrow{color:#6cb4d2;letter-spacing:.32em}.mode-trajectory h1{font-size:clamp(30px,3.7vw,53px);line-height:1.1;font-weight:300;letter-spacing:-.04em}.mode-trajectory .intro p{font-size:11px;line-height:1.9;color:#91a6b7}.flight-panel{top:auto;bottom:145px;right:28px;border-radius:3px 18px 3px 18px;border-color:#7cdfff25;background:linear-gradient(140deg,#112737c9,#030a15e8);box-shadow:0 20px 80px #0005,inset 0 1px #b1edff12}.flight-time{font-weight:200;letter-spacing:-.06em}.flight-panel .eyebrow{font-size:9px;letter-spacing:.25em}.flight-panel p:last-child{font-size:9px;color:#617c91;border-top:1px solid #91d9ff16;padding-top:10px}.flight-label{font-size:9px;letter-spacing:.12em;padding:5px 9px;border-left:1px solid currentColor;background:linear-gradient(90deg,#050d17aa,transparent);text-shadow:0 1px 5px #000;opacity:.9}.flight-actions button{border-radius:4px;border-color:#8bd6ff25}
+@media(max-width:800px){.mode-trajectory .intro{top:145px;left:18px;max-width:180px}.flight-panel{bottom:112px;right:10px;width:195px}.flight-label{font-size:8px;padding:3px 5px}}
+
+/* Match the overview's clean, uniform body names. */
+.flight-label{color:#b6c8d8;background:none;border:0;border-radius:0;box-shadow:none;padding:0;font:10px system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase;text-align:center;white-space:nowrap;opacity:1;text-shadow:0 2px 8px #000}
+@media(max-width:800px){.flight-label{font-size:9px;padding:0}}
+
+.flight-label{pointer-events:auto;cursor:pointer;touch-action:manipulation;min-width:36px;min-height:24px;display:none}
+.flight-label:hover,.flight-label.hover{background:none;border:0;color:#f3faff;text-shadow:0 0 12px #b3e6ff88}
+.flight-label:focus-visible{outline:1px solid #b6c8d8;outline-offset:4px}
+
+/* Immersive, opt-in procedural soundtrack */
+.stellar-music{position:relative;display:flex;align-items:flex-start;gap:3px;pointer-events:auto}
+#musicToggle{min-width:102px}#musicToggle.active{color:#caedff;border-color:#8bd6ff88;box-shadow:inset 0 0 18px #8bd6ff0c}
+#musicOptions{padding:8px 9px;font-size:13px}.music-panel[hidden]{display:none!important}
+.music-panel{position:absolute;top:calc(100% + 12px);right:0;width:260px;padding:18px;border:1px solid #88cffb35;border-radius:14px;background:linear-gradient(145deg,#122737f5,#060d1af7);backdrop-filter:blur(24px);box-shadow:0 20px 70px #0009;z-index:15;text-align:left}
+.music-heading{font:9px monospace;letter-spacing:.19em;color:#82adc6}.music-now{display:flex;align-items:center;gap:10px;margin:17px 0 8px}.music-now i{width:7px;height:7px;border-radius:50%;background:#8293a0}.stellar-music:has(#musicToggle.active) .music-now i{background:#8bd6ff;box-shadow:0 0 12px #8bd6ff}
+.music-now strong{font-size:17px;font-weight:400;color:#e8f4fc}.music-panel p{font-size:10px;line-height:1.7;color:#8ca5b8;margin:8px 0 15px}.music-panel label{display:flex;justify-content:space-between;font-size:11px;color:#b8cbd8;margin-top:18px}.music-panel input{margin:12px 0 5px;width:100%;accent-color:#8bd6ff}.music-panel #musicNote{font-size:9px;border-top:1px solid #ffffff12;padding-top:12px;margin-bottom:0}
+@media(max-width:800px){#musicToggle{min-width:83px}.music-panel{position:fixed;top:115px;right:12px;width:min(260px,calc(100vw - 24px))}#musicOptions{padding:6px 8px}}
+

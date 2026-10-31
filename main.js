@@ -46,21 +46,22 @@ const lineX = {}; { let x = sun.r + 1.6; for (const b of planets) { const half =
 /* ───────── State · 状态 ───────── */
 let mode = 'overview', focus = null, paused = false, lineBlend = 0, orbitSpeed = 1;
 let sliderSpread = 0, handSpread = 0, expansion = 0, last = performance.now();
-const zooms = { overview: 1, lineup: 1, focus: 1 };
+const zooms = { overview: 1, lineup: 1, focus: 1, trajectory: 1 };
 const rig = { target: new T.Vector3(), logDist: Math.log(300), yaw: 0.6, pitch: 0.55 }, goal = { yaw: 0.6, pitch: 0.55 };
 const from = { target: new T.Vector3(), logDist: 0 }; let trans = 1;
 const tanHalf = () => Math.tan(T.MathUtils.degToRad(camera.fov / 2));
 const fitAspect = () => Math.min(camera.aspect, 1.8);
 const baseDist = {
+  trajectory: () => 205 / (tanHalf() * fitAspect()),
   overview: () => Math.max(170, 112 / (tanHalf() * fitAspect())),
   lineup: () => ((lineX.end - sun.r * 0.55) / 2) / (tanHalf() * fitAspect()),
   focus: () => focus.r * (focus.isSun ? 2.6 : focus.ring ? 4.6 : 3.3) / Math.min(1, camera.aspect * 0.9),
 };
-const zoomLimits = { overview: () => [0.45, baseDist.overview() / (sun.r * 1.9)], lineup: () => [0.6, 6], focus: () => [0.45, focus?.isSun ? 2 : 5] };
+const zoomLimits = { trajectory: () => [0.45, 4], overview: () => [0.45, baseDist.overview() / (sun.r * 1.9)], lineup: () => [0.6, 6], focus: () => [0.45, focus?.isSun ? 2 : 5] };
 const clampZoom = (z, m = mode) => clamp(z, ...zoomLimits[m]());
 const lineCenter = () => (sun.r * 0.55 + lineX.end) / 2;
 
-function startTransition() { from.target.copy(rig.target); from.logDist = rig.logDist; trans = 0; }
+function startTransition() { camera.fov=mode==='trajectory'?52:42;camera.updateProjectionMatrix(); from.target.copy(rig.target); from.logDist = rig.logDist; trans = 0; }
 function goalTarget(out) {
   if (mode === 'focus') return out.copy(focus.anchor.position);
   if (mode === 'lineup') return out.set(lineCenter(), 0, 0);
@@ -84,7 +85,7 @@ function setHover(id) {
 }
 
 /* ───────── Picking (works for tiny planets too) · 拾取 ───────── */
-const v3 = new T.Vector3();
+const v3 = new T.Vector3(), flightPickRay=new T.Raycaster(), flightPickNdc=new T.Vector2();
 function screenOf(b) {
   v3.copy(b.anchor.position).project(camera);
   const dist = camera.position.distanceTo(b.anchor.position);
@@ -92,6 +93,21 @@ function screenOf(b) {
 }
 function pickAt(x, y, minPx = 22) {
   if (mode === 'focus') return null;
+  if (mode === 'trajectory') {
+    flight.updateMatrixWorld(true);
+    flightPickNdc.set(x/innerWidth*2-1,1-y/innerHeight*2);flightPickRay.setFromCamera(flightPickNdc,camera);
+    const hits=flightPickRay.intersectObjects(flightItems.map(it=>it.visual),true).filter(hit=>hit.object.material?.visible!==false);
+    if(hits.length){let obj=hits[0].object;while(obj && obj.parent!==flight)obj=obj.parent;const item=flightItems.find(it=>it.mesh===obj);if(item)return item.p.id;}
+    let best=null,score=Infinity;
+    for(const item of flightItems){
+      item.mesh.getWorldPosition(v3);const dist=camera.position.distanceTo(v3);v3.project(camera);
+      if(v3.z < -1 || v3.z>1)continue;
+      const px=(v3.x+1)*innerWidth/2,py=(1-v3.y)*innerHeight/2,reach=Math.max(minPx,item.size/(dist*tanHalf())*innerHeight/2),d=Math.hypot(px-x,py-y);
+      const candidate=d/reach+(item.i?0:1);
+      if(d<=reach && candidate<score){best=item.p.id;score=candidate;}
+    }
+    return best;
+  }
   let best = null, bestScore = Infinity;
   for (const b of bodies) {
     const s = screenOf(b); if (!s.front) continue;
@@ -104,6 +120,128 @@ function pickAt(x, y, minPx = 22) {
 }
 
 /* ───────── Modes · 模式 ───────── */
+
+/* Motion trails: shared time axis, real relative orbital periods, illustrative
+   galactic translation. Distances/radii compressed; not an ephemeris. */
+const flight = new T.Group(); scene.add(flight); flight.visible = false;
+const flightPanel = document.createElement('aside'); flightPanel.className = 'flight-panel';
+flightPanel.innerHTML = `<div class="eyebrow">${bi('TRAJECTORY CONTROL','轨迹控制','CONTROL DE TRAYECTORIAS')}</div>
+<div class="flight-time" id="flightTime">+0.00 yr</div>
+<label>${bi('Time speed','时间速度','Velocidad')} <b id="flightRate">1×</b><input id="flightSpeed" aria-label="Motion speed" type="range" min="0.2" max="4" step="0.2" value="1"></label>
+<div class="flight-actions"><button id="flightReset">${bi('Restart','重新开始','Reiniciar')}</button><button id="flightView">${bi('Change angle ↗','切换机位 ↗','Cambiar ángulo ↗')}</button></div>
+<p>${bi('Drag for 360° · Scroll to zoom · Click a planet to explore','拖动 360° 旋转 · 滚轮缩放 · 点击行星或名字查看详情','Arrastra para girar · Rueda para zoom · Espacio para pausar')}</p>
+<p>${bi('JPL J2000 eccentricities and inclinations, fixed Keplerian ellipses and relative periods. Earth uses the Earth–Moon barycenter approximation. Sizes/distances compressed. Straight solar travel and its direction are illustrative; not a live ephemeris or full Galactic model.','采用 JPL J2000 离心率、轨道倾角与固定开普勒椭圆，保留公转周期比例；地球采用地月质心近似。大小和距离经过压缩。太阳直线前进及其方向为示意，不是实时星历或完整银河运动模型。','Marco móvil ilustrativo. Períodos orbitales relativos reales; distancias comprimidas y cuerpos ampliados. Fases iniciales, velocidad de avance y trayectoria solar recta ilustrativas; no es una efeméride.')}</p>`;
+document.body.append(flightPanel);
+const trailCount = 1800, trailYears = 12;
+let flightTime = 0, flightRate = 1, flightSide = false;
+
+// Real planet surfaces, clouds, atmospheres and Saturn's textured rings.
+const flightLight=new T.PointLight(0xffe6bb,700,500,1.3);flight.add(flightLight);
+flight.add(new T.HemisphereLight(0xb3dfff,0x080e22,1.8));
+const haloCanvas=document.createElement('canvas');haloCanvas.width=haloCanvas.height=128;
+const haloCtx=haloCanvas.getContext('2d'), hg=haloCtx.createRadialGradient(64,64,0,64,64,64);
+hg.addColorStop(0,'rgba(255,255,255,1)');hg.addColorStop(.08,'rgba(255,235,180,.9)');hg.addColorStop(.24,'rgba(255,184,70,.22)');hg.addColorStop(1,'rgba(255,154,30,0)');haloCtx.fillStyle=hg;haloCtx.fillRect(0,0,128,128);
+const haloTexture=new T.CanvasTexture(haloCanvas);
+const solarHalo=new T.Sprite(new T.SpriteMaterial({map:haloTexture,color:0xffd6a0,blending:T.AdditiveBlending,transparent:true,depthWrite:false}));solarHalo.scale.set(115,115,1);flight.add(solarHalo);
+const flightItems = [SUN,...PLANETS].map((p,i) => {
+  const radius = i ? 28 + 13*Math.sqrt(p.au) : 0;
+  const original=bodyById[p.id];
+  const mesh=new T.Group();flight.add(mesh);
+  const visual=original.tilt.clone(true), size=1.6*Math.pow(p.radiusKm/6371,.55); // Compressed size scale preserves ordering and clear differences.
+  visual.scale.setScalar(size/original.r);mesh.add(visual);
+  const sourceNodes=[],copyNodes=[];original.tilt.traverse(n=>{if(n.isMesh)sourceNodes.push(n)});visual.traverse(n=>{if(n.isMesh)copyNodes.push(n)});
+  const positions = new Float32Array(trailCount*3), colors=new Float32Array(trailCount*3), c=new T.Color(p.color);
+  for(let j=0;j<trailCount;j++){const age=j/(trailCount-1),fade=Math.pow(age,2.3);colors[j*3]=c.r*fade;colors[j*3+1]=c.g*fade;colors[j*3+2]=c.b*fade;}
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(positions,3));geo.setAttribute('color',new T.BufferAttribute(colors,3));
+  const line=new T.Line(geo,new T.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.85,blending:T.AdditiveBlending,depthWrite:false}));line.frustumCulled=false;flight.add(line);
+  const sparkCount=900, sparkGeo=new T.BufferGeometry();sparkGeo.setAttribute('position',new T.BufferAttribute(new Float32Array(sparkCount*3),3));
+  const ages=new Float32Array(sparkCount);for(let j=0;j<sparkCount;j++)ages[j]=j/(sparkCount-1);sparkGeo.setAttribute('age',new T.BufferAttribute(ages,1));
+  const sparks=new T.Points(sparkGeo,new T.ShaderMaterial({uniforms:{tint:{value:c},pulse:{value:0},pixelRatio:{value:Math.min(devicePixelRatio,1.75)}},vertexShader:`attribute float age; varying float vAge; uniform float pixelRatio; void main(){vAge=age;vec4 pos=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*pos;gl_PointSize=clamp((1.8+age*3.5)*pixelRatio*170./max(20.,-pos.z),1.,12.);}`,fragmentShader:`varying float vAge;uniform vec3 tint;uniform float pulse;void main(){float r=length(gl_PointCoord-.5)*2.;if(r>1.)discard;float glow=pow(1.-r,2.);float breathe=.72+.28*sin(vAge*34.-pulse*2.);float alpha=pow(vAge,1.7)*glow*breathe;gl_FragColor=vec4(mix(tint,vec3(1.),pow(vAge,16.)*.65),alpha*.85);}`,transparent:true,blending:T.AdditiveBlending,depthWrite:false}));sparks.frustumCulled=false;flight.add(sparks);
+  const label=document.createElement('button');label.type='button';label.className='flight-label';label.innerHTML=bi(p.en.toUpperCase(),p.zh,p.es.toUpperCase());label.setAttribute('aria-label','Explore '+p.en);label.onclick=()=>select(p.id);label.onmouseenter=()=>setHover(p.id);label.onmouseleave=()=>setHover(null);document.body.append(label);
+  return {p,i,radius,size,mesh,line,label,visual,sourceNodes,copyNodes,sparks,sparkCount};
+});
+// A diagonal flight axis gives the trails a cinematic rising composition.
+flight.rotation.set(.12,-.22,.38);
+// NASA/JPL Table 1, J2000: e, inclination, mean longitude, perihelion longitude, node.
+// Fixed-element educational Kepler model; no secular rates or N-body perturbations.
+// https://ssd.jpl.nasa.gov/planets/approx_pos.html
+const flightElements={
+ mercury:[.20563593,7.00497902,252.25032350,77.45779628,48.33076593],
+ venus:[.00677672,3.39467605,181.97909950,131.60246718,76.67984255],
+ earth:[.01671123,-.00001531,100.46457166,102.93768193,0],
+ mars:[.09339410,1.84969142,-4.55343205,-23.94362959,49.55953891],
+ jupiter:[.04838624,1.30439695,34.39644051,14.72847983,100.47390909],
+ saturn:[.05386179,2.48599187,49.95424423,92.59887831,113.66242448],
+ uranus:[.04725744,.77263783,313.23810451,170.95427630,74.01692503],
+ neptune:[.00859048,1.77004347,-55.12002969,44.96476227,131.78422574]
+};
+const flightOrbitBasis={};
+for(const [id,[e,inc,L,peri,node]] of Object.entries(flightElements)){
+ const d=Math.PI/180,I=inc*d,O=node*d,w=(peri-node)*d,cw=Math.cos(w),sw=Math.sin(w),co=Math.cos(O),so=Math.sin(O),ci=Math.cos(I),si=Math.sin(I);
+ flightOrbitBasis[id]={e,M0:(L-peri)*d,u:[cw*co-sw*so*ci,cw*so+sw*co*ci,sw*si],v:[-sw*co-cw*so*ci,-sw*so+cw*co*ci,cw*si]};
+}
+// Look along the orbital plane's normal, rather than along translation.
+// This changes only the viewpoint: circular orbits are not stretched to look round.
+flight.updateMatrixWorld(true);
+const orbitFacing=new T.Vector3(.5,0,-Math.sqrt(.75)).applyQuaternion(flight.quaternion).normalize();
+const flightFaceYaw=Math.atan2(orbitFacing.x,orbitFacing.z),flightFacePitch=Math.asin(orbitFacing.y);
+function flightPosition(item,t,out) {
+ const drift=95+(t-flightTime)*22;
+ if(!item.i)return out.set(drift,0,0);
+ const o=flightOrbitBasis[item.p.id],M=wrapPI(o.M0+t*365.25/item.p.periodDays*Math.PI*2);
+ let E=M;for(let k=0;k<5;k++)E-=(E-o.e*Math.sin(E)-M)/(1-o.e*Math.cos(E));
+ const x=item.radius*(Math.cos(E)-o.e),y=item.radius*Math.sqrt(1-o.e*o.e)*Math.sin(E);
+ const X=o.u[0]*x+o.v[0]*y,Y=o.u[1]*x+o.v[1]*y,Z=o.u[2]*x+o.v[2]*y;
+ // Orthonormal basis: preserve orbital shape in 3D; translation stays illustrative.
+ return out.set(drift+X*Math.sqrt(.75)+Z*.5,Y,X*.5-Z*Math.sqrt(.75));
+}
+function updateFlight(dt) {
+  const active=mode==='trajectory'; flight.visible=active;flightPanel.style.display=active?'block':'none';
+  $('#trajectory').classList.toggle('active',active);$('#trajectory').setAttribute('aria-pressed',active);
+  bodies.forEach(b=>b.anchor.visible=!active);belt.visible=!active;
+  flightItems.forEach(item=>item.label.style.display='none');
+  if(!active)return;
+  if(!paused) flightTime+=dt*.35*flightRate;
+  $('#flightTime').textContent='+'+flightTime.toFixed(2)+' '+(document.documentElement.dataset.lang==='zh'?'年':'yr');
+  for(const item of flightItems){
+    flightPosition(item,flightTime,item.mesh.position);
+    item.visual.rotation.y=paused?item.visual.rotation.y:item.visual.rotation.y+dt*.16;
+    item.sourceNodes.forEach((n,j)=>{if(item.copyNodes[j])item.copyNodes[j].material=n.material;});
+    item.line.material.opacity=hoverId===item.p.id ? 1 : .62+.22*Math.sin(flightTime*1.8+item.i*.7);
+    item.label.classList.toggle('hover',hoverId===item.p.id);
+    item.sparks.material.uniforms.pulse.value=flightTime*3;
+    const sparkArr=item.sparks.geometry.attributes.position.array;
+    for(let j=0;j<item.sparkCount;j++){
+      const age=j/(item.sparkCount-1),t=flightTime-trailYears*(1-age);flightPosition(item,t,tv);
+      const spread=(1-age)*1.8,seed=j*12.9898+item.i*78.233;
+      tv.x+=Math.sin(seed)*spread;tv.y+=Math.sin(seed*1.7)*spread;tv.z+=Math.cos(seed*2.3)*spread;tv.toArray(sparkArr,j*3);
+    }
+    item.sparks.geometry.attributes.position.needsUpdate=true;
+    if(!item.i){solarHalo.position.copy(item.mesh.position);flightLight.position.copy(item.mesh.position);solarHalo.material.opacity=.7+.12*Math.sin(flightTime*4);}
+
+    const arr=item.line.geometry.attributes.position.array;
+    for(let j=0;j<trailCount;j++){flightPosition(item,flightTime-trailYears*(1-j/(trailCount-1)),tv);tv.toArray(arr,j*3);}
+    item.line.geometry.attributes.position.needsUpdate=true;
+    flight.updateMatrixWorld(true);item.mesh.getWorldPosition(tv);tv.project(camera);
+    if(tv.z<1 && Math.abs(tv.x)<.98 && Math.abs(tv.y)<.95){
+      item.mesh.getWorldPosition(orbitPos);
+      const labelOffset=item.size/(camera.position.distanceTo(orbitPos)*tanHalf())*innerHeight/2+10;
+      item.label.style.display='block';item.label.style.transform=`translate(${(tv.x+1)*innerWidth/2}px,${(1-tv.y)*innerHeight/2+labelOffset}px) translateX(-50%)`;
+    }
+  }
+}
+function trajectory(){
+  if(mode==='trajectory'){home();return;}
+  mode='trajectory';focus=null;planets.forEach(b=>{if(!b.hiRes)upgradeTexture(b,1024);});zooms.trajectory=1;startTransition();goal.yaw=flightFaceYaw;goal.pitch=flightFacePitch;flightPreset=0;
+  document.body.className=document.body.className.replace(/\bmode-\w+/g,'')+' mode-trajectory';
+  $('#info').classList.add('hidden');setHover(null);hideParticles();showHighlights(null);highlightNav(null);setIntro('trajectory');chat?.refresh();
+}
+$('#trajectory').onclick=trajectory;
+$('#flightSpeed').oninput=e=>{flightRate=+e.target.value;$('#flightRate').textContent=flightRate.toFixed(1)+'×';};
+$('#flightReset').onclick=()=>{flightTime=0;};
+let flightPreset=0;
+$('#flightView').onclick=()=>{const views=[[flightFaceYaw,flightFacePitch],[flightFaceYaw-.35,flightFacePitch+.2],[1.2,.55],[-.8,-.45],[.1,1.45]];flightPreset=(flightPreset+1)%views.length;[goal.yaw,goal.pitch]=views[flightPreset];};
+
 function home() {
   if (mode === 'overview') return;
   mode = 'overview'; focus = null; startTransition(); zooms.overview = 1;
@@ -171,6 +309,9 @@ function setIntro(m, b) {
   if (m === 'focus') {
     const idx = b.isSun ? 'STAR' : 'PLANET / ' + String(PLANETS.indexOf(b.p) + 1).padStart(2, '0'), idxZh = b.isSun ? '恒星' : '行星 / ' + String(PLANETS.indexOf(b.p) + 1).padStart(2, '0');
     $('#headline').innerHTML = bi(...nameOf(b.p)); $('#subtitle').innerHTML = bi(idx, idxZh, idx.replace('STAR', 'ESTRELLA').replace('PLANET', 'PLANETA'));
+  } else if (m === 'trajectory') {
+    $('#headline').innerHTML = bi('Worlds in motion.', '群星，向前。', 'Mundos en movimiento.');
+    $('#subtitle').innerHTML = bi('Our star moves. Eight worlds travel with it. Explore their luminous paths through a moving reference frame.', '太阳向前，八颗行星与它同行。旋转视角，探索运动参考系下交织的发光轨迹。', 'Nuestra estrella se mueve. Ocho mundos viajan con ella. Explora sus trayectorias luminosas.');
   } else if (m === 'lineup') {
     $('#headline').innerHTML = bi('True sizes, side by side.', '真实大小，并排比较。');
     $('#subtitle').innerHTML = bi('The Sun is 109 times wider than Earth. Jupiter is 11 times wider. Mercury is smaller than some moons.', '太阳的直径是地球的 109 倍，木星是地球的 11 倍，水星甚至比一些卫星还小。');
@@ -241,7 +382,7 @@ canvas.addEventListener('pointerdown', e => { pointers.set(e.pointerId, { x: e.c
 canvas.addEventListener('pointermove', e => {
   if (!pointers.has(e.pointerId)) { if (e.pointerType === 'mouse') setHover(pickAt(e.clientX, e.clientY)); return; }
   const old = pointers.get(e.pointerId); if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) moved = true;
-  if (pointers.size === 1) { goal.yaw -= (e.clientX - old.x) * 0.006; goal.pitch = clamp(goal.pitch + (e.clientY - old.y) * 0.005, mode === 'focus' ? -1.35 : 0.02, 1.45); }
+  if (pointers.size === 1) { goal.yaw -= (e.clientX - old.x) * 0.006; goal.pitch = mode === 'trajectory' ? goal.pitch + (e.clientY-old.y)*.005 : clamp(goal.pitch + (e.clientY - old.y) * 0.005, mode === 'focus' ? -1.35 : 0.02, 1.45); }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 2) { const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y); zooms[mode] = clampZoom(zooms[mode] * d / Math.max(1, pinchDist)); pinchDist = d; }
 });
@@ -307,7 +448,7 @@ function onHand(u) {
   } else hand.pinch = null;
   if (g === 'open') {
     if (!browsing) handSpread = clamp((u.openness - 1.35) * 1.25, 0, 1);
-    else { goal.yaw -= accel(dx, gain) / innerWidth * 3.8; goal.pitch = clamp(goal.pitch + accel(dy, gain) / innerHeight * 2.2, mode === 'lineup' ? -0.4 : 0.02, 1.45); }
+    else { goal.yaw -= accel(dx, gain) / innerWidth * 3.8; goal.pitch = mode === 'trajectory' ? goal.pitch + accel(dy,gain)/innerHeight*2.2 : clamp(goal.pitch + accel(dy, gain) / innerHeight * 2.2, mode === 'lineup' ? -0.4 : 0.02, 1.45); }
   }
   if (g === 'fist') {
     handSpread = 0;
@@ -383,7 +524,7 @@ function animate(now) {
     b.angle += dt * orbitSpeed * (Math.PI * 2 / 60) * (365.25 / b.p.periodDays);   // Earth: one orbit per minute
     orbitPos.set(Math.cos(b.angle) * b.orbit, 0, Math.sin(b.angle) * b.orbit); linePos.set(lineX[b.p.id], 0, 0);
     b.anchor.position.lerpVectors(orbitPos, linePos, ease(lineBlend));
-    b.line.visible = lineBlend < 0.98 && focusFade < 0.97; b.line.material.opacity = (hoverId === b.p.id ? 0.75 : 0.3) * (1 - lineBlend) * (1 - focusFade);
+    b.line.visible = mode !== 'trajectory' && lineBlend < 0.98 && focusFade < 0.97; b.line.material.opacity = (hoverId === b.p.id ? 0.75 : 0.3) * (1 - lineBlend) * (1 - focusFade);
     if (b.spinOn) b.spin.rotation.y += dt * (Math.PI * 2 / 20) * (23.93 / b.p.rotationHours);     // Earth: one spin per 20 s
     if (b.clouds) b.clouds.rotation.y += dt * 0.012;
   }
@@ -416,6 +557,7 @@ function animate(now) {
   rig.yaw += (goal.yaw - rig.yaw) * k; rig.pitch += (goal.pitch - rig.pitch) * k;
   const d = Math.exp(rig.logDist), cp = Math.cos(rig.pitch);
   camera.position.set(rig.target.x + d * cp * Math.sin(rig.yaw), rig.target.y + d * Math.sin(rig.pitch), rig.target.z + d * cp * Math.cos(rig.yaw));
+  if(mode==='trajectory') camera.up.set(-Math.sin(rig.yaw)*Math.sin(rig.pitch),Math.cos(rig.pitch),-Math.cos(rig.yaw)*Math.sin(rig.pitch)); else camera.up.set(0,1,0);
   camera.lookAt(rig.target);
   // Keep the focused planet clear of the info panel on wide screens · 让行星避开右侧信息面板
   viewShift += ((mode === 'focus' && innerWidth > 1100 ? 190 : 0) - viewShift) * k;
@@ -424,7 +566,7 @@ function animate(now) {
   if (Math.abs(near - lastNear) / near > 0.05) { camera.near = near; camera.far = Math.max(8000, d * 40); camera.updateProjectionMatrix(); lastNear = near; }
 
   // Screen labels · 屏幕标签
-  const showTags = mode !== 'focus' || trans < 0.25;
+  const showTags = mode !== 'trajectory' && (mode !== 'focus' || trans < 0.25);
   for (const b of bodies) {
     if (!showTags) { b.tag.style.display = 'none'; continue; }
     const s = screenOf(b), size = Math.max(14, Math.min(s.r * 2 + 10, 400));
@@ -446,6 +588,7 @@ function animate(now) {
     it.el.style.display = show ? 'block' : 'none';
     if (show) it.el.style.transform = `translate(${(hv.x + 1) / 2 * innerWidth}px,${(1 - hv.y) / 2 * innerHeight}px)`;
   }
+  updateFlight(dt);
   renderer.render(scene, camera);
 }
 const hv = new T.Vector3(), hd = new T.Vector3(), hc = new T.Vector3();
@@ -461,4 +604,4 @@ setIntro('overview'); document.body.classList.add('mode-overview');
 initHabitability();
 // Public hooks for teammates and the console · 供组员调用的接口
 // simulateHand({present:true, gesture:'point', cursor:{x:.5,y:.5}, openness:1}) lets you test gestures without a camera.
-window.SolarAtlas = { PLANETS, selectPlanet: select, home, lineup, bodies: bodyById, scene, camera, simulateHand: onHand, screenOf: id => screenOf(bodyById[id]) };
+window.SolarAtlas = { trajectory, PLANETS, selectPlanet: select, home, lineup, bodies: bodyById, scene, camera, simulateHand: onHand, screenOf: id => screenOf(bodyById[id]) };
